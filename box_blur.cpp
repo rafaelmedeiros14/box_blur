@@ -13,8 +13,8 @@
 using namespace std;
 
 // CONSTANTS
-static const string INPUT_DIRECTORY = "input";
-static const string OUTPUT_DIRECTORY = "output";
+static const string INPUT_DIRECTORY = "../input";
+static const string OUTPUT_DIRECTORY = "../output";
 static const int FILTER_SIZE = 5;
 static const int NUM_CHANNELS = 3;
 
@@ -82,6 +82,7 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     // Get the dimensions of the input image
     int width = image[0].size();
     int height = image.size();
+    int sum;
 
     // Create a new image to store the result
     single_channel_image_t result(height, vector<uint8_t>(width));
@@ -90,6 +91,39 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     int pad = filter_size / 2;
 
     // YOUR CODE HERE
+
+    // Loop through the image pixels, skipping the border pixels
+
+    for (int i = pad; i < height-pad; i++){
+        for(int j = pad; j < width-pad; j++){
+            sum = 0
+            // Loop through the filter's rows and columns
+            for(int k = -pad; k < pad+1; k++){
+                for(int l = -pad; l < pad+1; l++){
+                    // Add the corresponding image pixel value to the sum
+                    sum = sum + image[i+k][j+l];
+                }
+            }
+        }
+    }
+        
+            // Calculate the average value for the current pixel
+            average <- sum / (filter_size * filter_size)
+
+            // Assign the average value to the corresponding pixel in the result image
+            result[row][col] <- average
+
+    // Copy the border pixels from the input image to the result image
+    for row in range(0, height):
+        for col in range(0, pad):
+            result[row][col] <- image[row][col]
+            result[row][width - col - 1] <- image[row][width - col - 1]
+
+    for col in range(0, width):
+        for row in range(0, pad):
+            result[row][col] <- image[row][col]
+            result[height - row - 1][col] <- image[height - row - 1][col]
+    */
 
     return result;
 }
