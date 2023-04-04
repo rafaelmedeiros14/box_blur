@@ -82,7 +82,8 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     // Get the dimensions of the input image
     int width = image[0].size();
     int height = image.size();
-    int sum;
+    int sum, average;
+
 
     // Create a new image to store the result
     single_channel_image_t result(height, vector<uint8_t>(width));
@@ -93,10 +94,9 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     // YOUR CODE HERE
 
     // Loop through the image pixels, skipping the border pixels
-
-    for (int i = pad; i < height-pad; i++){
+    for(int i = pad; i < height-pad; i++){
         for(int j = pad; j < width-pad; j++){
-            sum = 0
+            sum = 0;
             // Loop through the filter's rows and columns
             for(int k = -pad; k < pad+1; k++){
                 for(int l = -pad; l < pad+1; l++){
@@ -104,27 +104,27 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
                     sum = sum + image[i+k][j+l];
                 }
             }
+            // Calculate the average value for the current pixel
+            average = sum / (filter_size * filter_size);
+            // Assign the average value to the corresponding pixel in the result image
+            result[i][j] = average;
         }
     }
-        
-            // Calculate the average value for the current pixel
-            average <- sum / (filter_size * filter_size)
-
-            // Assign the average value to the corresponding pixel in the result image
-            result[row][col] <- average
-
     // Copy the border pixels from the input image to the result image
-    for row in range(0, height):
-        for col in range(0, pad):
-            result[row][col] <- image[row][col]
-            result[row][width - col - 1] <- image[row][width - col - 1]
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < pad; j++){
+            result[i][j] = image[i][j];
+            result[i][width-j-1] = image[i][width-j-1];
+        }
+    }
 
-    for col in range(0, width):
-        for row in range(0, pad):
-            result[row][col] <- image[row][col]
-            result[height - row - 1][col] <- image[height - row - 1][col]
-    */
-
+    for(int j = 0; j < width; j++){
+        for(int i = 0; j < pad; i++){
+            result[i][j] = image[i][j];
+            result[height-i-1][j] = image[height-i-1][j];
+        }
+    }
+            
     return result;
 }
 
