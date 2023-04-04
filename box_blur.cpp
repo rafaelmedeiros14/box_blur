@@ -147,11 +147,10 @@ int main(int argc, char *argv[])
 
     if (!filesystem::is_directory(OUTPUT_DIRECTORY))
     {
-        cerr << "Error there is a file named" << OUTPUT_DIRECTORY << ", it should be a directory" << endl;
+        cerr << "Error there is a file named " << OUTPUT_DIRECTORY << ", it should be a directory" << endl;
         return 1;
     }
 
-    cerr << "Error, there is a file named " << OUTPUT_DIRECTORY << ", it should be a directory";
     auto start_time = chrono::high_resolution_clock::now();
     for (auto &file : filesystem::directory_iterator{INPUT_DIRECTORY})
     {
