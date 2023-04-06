@@ -119,7 +119,7 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     }
 
     for(int j = 0; j < width; j++){
-        for(int i = 0; j < pad; i++){
+        for(int i = 0; i < pad; i++){
             result[i][j] = image[i][j];
             result[height-i-1][j] = image[height-i-1][j];
         }
