@@ -1,9 +1,13 @@
 #include <iostream>
+#include <condition_variable>
 #include <vector>
+#include <mutex>
+#include <array>
 #include <string>
 #include <filesystem>
 #include <chrono>
 #include <thread>
+#include <cassert>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -21,6 +25,46 @@ static const int NUM_CHANNELS = 3;
 // Image type definition
 typedef vector<vector<uint8_t>> single_channel_image_t;
 typedef array<single_channel_image_t, NUM_CHANNELS> image_t;
+
+// Mutex para proteger os recursos compartilhados
+std::mutex m;
+// Variavel de condicao que indica que existe espaco disponivel no buffer
+// O consumidor utiliza essa variavel de condicao para notificar o produtor que a fila nao esta cheia
+std::condition_variable space_available;
+// Variavel de condicao que indica que existem dados disponiveis no buffer
+// O produtor utiliza essa variavel de condicao para notificar o consumidor que a fila nao esta vazia
+std::condition_variable data_available;
+
+// Numero de threads produtoras e consumidoras a serem criadas no main()
+static const unsigned NUM_PRODUCERS = 1;
+static const unsigned NUM_CONSUMERS = 10;
+
+//  =========================  Circular buffer  ============================================
+// Codigo que implementa um buffer circular
+static const unsigned BUFFER_SIZE = 1000;
+string buffer[BUFFER_SIZE];
+static unsigned counter = 0;
+unsigned in = 0, out = 0;
+
+void add_buffer(string i)
+{
+  buffer[in] = i;
+  in = (in+1) % BUFFER_SIZE;
+  counter++;
+}
+
+string get_buffer()
+{
+  string v;
+  v = buffer[out];
+  out = (out+1) % BUFFER_SIZE;
+  counter--;
+  return v;
+}
+
+// Altere esse valor caso queira que o produtor e consumidor durmam SLEEP_TIME milissegundos
+// apos cada iteracao 
+static const unsigned SLEEP_TIME = 0; // ms
 
 image_t load_image(const string &filename)
 {
@@ -91,8 +135,6 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     // Calculate the padding size for the filter
     int pad = filter_size / 2;
 
-    // YOUR CODE HERE
-
     // Loop through the image pixels, skipping the border pixels
     for(int i = pad; i < height-pad; i++){
         for(int j = pad; j < width-pad; j++){
@@ -128,6 +170,87 @@ single_channel_image_t apply_box_blur(const single_channel_image_t &image, const
     return result;
 }
 
+// Producer
+void producer_func(const unsigned id)
+{
+	int i = 0;
+	for (auto &file : filesystem::directory_iterator{INPUT_DIRECTORY})
+    {
+		// Cria um objeto do tipo unique_lock que no construtor chama m.lock()
+		std::unique_lock<std::mutex> lock(m);
+
+		// Verifica se o buffer esta cheio e, caso afirmativo, espera notificacao de "espaco disponivel no buffer"
+		while (counter == BUFFER_SIZE)
+		{			
+			space_available.wait(lock); // Espera por espaco disponivel 
+			// Lembre-se que a funcao wait() invoca m.unlock() antes de colocar a thread em estado de espera para que o consumidor consiga adquirir a posse do mutex m e consumir dados
+			// Quando a thread eh acordada, a funcao wait() invoca m.lock() retomando a posse do mutex m
+		}
+
+        string input_image_path = file.path().string();
+
+		// O buffer nao esta mais cheio, entao produz um elemento
+		add_buffer(input_image_path);
+		
+        cout << "Producer " << id << " - produced: " << i << " - Buffer counter: " << counter << endl;
+        i++;
+
+		// Notifica o consumiror que existem dados a serem consumidos no buffer
+		data_available.notify_one();
+		
+		// (Opicional) dorme por SLEEP_TIME milissegundos
+		if (SLEEP_TIME > 0)
+			std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+
+		// Verifica a integridade do buffer, ou seja, verifica se o numero de elementos do buffer (counter)
+		// eh menor ou igual a BUFFER_SIZE
+		assert(counter <= BUFFER_SIZE);		
+	} // Fim de escopo -> o objeto lock sera destruido e invocara m.unlock(), liberando o mutex m
+}
+
+// Consumer
+void consumer_func(const unsigned id)
+{
+	while (true)
+	{
+		// Cria um objeto do tipo unique_lock que no construtor chama m.lock()
+		std::unique_lock<std::mutex> lock(m);
+		
+		// Verifica se o buffer esta vazio e, caso afirmativo, espera notificacao de "dado disponivel no buffer"
+		while (counter == 0)
+		{
+			data_available.wait(lock); // Espera por dado disponivel
+			// Lembre-se que a funcao wait() invoca m.unlock() antes de colocar a thread em estado de espera para que o produtor consiga adquirir a posse do mutex m e produzir dados
+			// Quando a thread eh acordada, a funcao wait() invoca m.lock() retomando a posse do mutex m
+		}
+        
+		// O buffer nao esta mais vazio, entao consome um elemento
+		string input_image_path = get_buffer();
+		
+        clog << "Processing image: " << input_image_path << endl;
+        image_t input_image = load_image(input_image_path);
+        image_t output_image;
+        for (int i = 0; i < NUM_CHANNELS; ++i)
+        {
+            output_image[i] = apply_box_blur(input_image[i], FILTER_SIZE);
+        }
+        string output_image_path = input_image_path.replace(input_image_path.find(INPUT_DIRECTORY), INPUT_DIRECTORY.length(), OUTPUT_DIRECTORY);
+        write_image(output_image_path, output_image);
+
+        cout << "Consumer " << id;
+
+		space_available.notify_one();
+		
+		// (Opicional) dorme por SLEEP_TIME milissegundo
+		if (SLEEP_TIME > 0)
+			std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+
+		// Verifica a integridade do buffer, ou seja, verifica se o numero de elementos do buffer (counter)
+		// eh maior ou igual a zero
+		assert(counter >= 0);
+	}  // Fim de escopo -> o objeto lock sera destruido e invocara m.unlock(), liberando o mutex m
+}
+
 int main(int argc, char *argv[])
 {
     if (!filesystem::exists(INPUT_DIRECTORY))
@@ -151,22 +274,20 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    auto start_time = chrono::high_resolution_clock::now();
-    for (auto &file : filesystem::directory_iterator{INPUT_DIRECTORY})
-    {
-        string input_image_path = file.path().string();
-        clog << "Processing image: " << input_image_path << endl;
-        image_t input_image = load_image(input_image_path);
-        image_t output_image;
-        for (int i = 0; i < NUM_CHANNELS; ++i)
-        {
-            output_image[i] = apply_box_blur(input_image[i], FILTER_SIZE);
-        }
-        string output_image_path = input_image_path.replace(input_image_path.find(INPUT_DIRECTORY), INPUT_DIRECTORY.length(), OUTPUT_DIRECTORY);
-        write_image(output_image_path, output_image);
-    }
-    auto end_time = chrono::high_resolution_clock::now();
-    auto elapsed_time = chrono::duration_cast<chrono::milliseconds>(end_time - start_time);
-    cout << "Elapsed time: " << elapsed_time.count() << " ms" << endl;
+    // Cria NUM_PRODUCER thread produtoras  e NUM_CONSUMER threads consumidoras
+	std::vector<std::thread> producers;
+	std::vector<std::thread> consumers;
+
+	for (unsigned i =0; i < NUM_PRODUCERS; ++i)
+	{
+		producers.push_back(std::thread(producer_func, i));
+	}
+	for (unsigned i =0; i < NUM_CONSUMERS; ++i)
+	{
+		consumers.push_back(std::thread(consumer_func, i));
+	}
+
+    consumers[0].join();
+    
     return 0;
 }
