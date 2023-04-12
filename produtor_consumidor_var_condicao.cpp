@@ -1,4 +1,4 @@
-// Solução do problema do produtor consumidor utilizando variáveis de condição
+// Soluï¿½ï¿½o do problema do produtor consumidor utilizando variï¿½veis de condiï¿½ï¿½o
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -10,11 +10,11 @@
 
 // Mutex para proteger os recursos compartilhados
 std::mutex m;
-// Variável de condição que indica que existe espaço disponível no buffer
-// O consumidor utiliza essa variável de condição para notificar o produtor que a fila não está cheia
+// Variï¿½vel de condiï¿½ï¿½o que indica que existe espaï¿½o disponï¿½vel no buffer
+// O consumidor utiliza essa variï¿½vel de condiï¿½ï¿½o para notificar o produtor que a fila nï¿½o estï¿½ cheia
 std::condition_variable space_available;
-// Variável de condição que indica que existem dados disponíveis no buffer
-// O produtor utiliza essa variável de condição para notificar o consumidor que a fila não está vazia
+// Variï¿½vel de condiï¿½ï¿½o que indica que existem dados disponï¿½veis no buffer
+// O produtor utiliza essa variï¿½vel de condiï¿½ï¿½o para notificar o consumidor que a fila nï¿½o estï¿½ vazia
 std::condition_variable data_available;
 
 
@@ -24,7 +24,7 @@ static const unsigned NUM_CONSUMERS = 10;
 
 
 //  =========================  Circular buffer  ============================================
-// Código que implementa um buffer circular
+// Cï¿½digo que implementa um buffer circular
 static const unsigned BUFFER_SIZE = 1000;
 int buffer[BUFFER_SIZE];
 static unsigned counter = 0;
@@ -48,7 +48,7 @@ int get_buffer()
 //  ==========================================================================================
 
 // Altere esse valor caso queira que o produtor e consumidor durmam SLEEP_TIME milissegundos
-// após cada iteração 
+// apï¿½s cada iteraï¿½ï¿½o 
 static const unsigned SLEEP_TIME = 0; // ms
 
 
@@ -61,15 +61,15 @@ void producer_func(const unsigned id)
 		// Cria um objeto do tipo unique_lock que no construtor chama m.lock()
 		std::unique_lock<std::mutex> lock(m);
 
-		// Verifica se o buffer está cheio e, caso afirmativo, espera notificação de "espaço disponível no buffer"
+		// Verifica se o buffer estï¿½ cheio e, caso afirmativo, espera notificaï¿½ï¿½o de "espaï¿½o disponï¿½vel no buffer"
 		while (counter == BUFFER_SIZE)
 		{			
-			space_available.wait(lock); // Espera por espaço disponível 
-			// Lembre-se que a função wait() invoca m.unlock() antes de colocar a thread em estado de espera para que o consumidor consiga adquirir a posse do mutex m	e consumir dados
-			// Quando a thread é acordada, a função wait() invoca m.lock() retomando a posse do mutex m
+			space_available.wait(lock); // Espera por espaï¿½o disponï¿½vel 
+			// Lembre-se que a funï¿½ï¿½o wait() invoca m.unlock() antes de colocar a thread em estado de espera para que o consumidor consiga adquirir a posse do mutex m	e consumir dados
+			// Quando a thread ï¿½ acordada, a funï¿½ï¿½o wait() invoca m.lock() retomando a posse do mutex m
 		}
 
-		// O buffer não está mais cheio, então produz um elemento
+		// O buffer nï¿½o estï¿½ mais cheio, entï¿½o produz um elemento
 		add_buffer(i);
 		std::cout << "Producer " << id << " - produced: " << i << " - Buffer counter: " << counter << std::endl;
 		i++;
@@ -81,10 +81,10 @@ void producer_func(const unsigned id)
 		if (SLEEP_TIME > 0)
 			std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 
-		// Verifica a integridade do buffer, ou seja, verifica se o número de elementos do buffer (counter)
-		// é menor ou igual a BUFFER_SIZE
+		// Verifica a integridade do buffer, ou seja, verifica se o nï¿½mero de elementos do buffer (counter)
+		// ï¿½ menor ou igual a BUFFER_SIZE
 		assert(counter <= BUFFER_SIZE);		
-	} // Fim de escopo -> o objeto lock será destruído e invocará m.unlock(), liberando o mutex m
+	} // Fim de escopo -> o objeto lock serï¿½ destruï¿½do e invocarï¿½ m.unlock(), liberando o mutex m
 }
 
 // Consumer
@@ -95,15 +95,15 @@ void consumer_func(const unsigned id)
 		// Cria um objeto do tipo unique_lock que no construtor chama m.lock()
 		std::unique_lock<std::mutex> lock(m);
 		
-		// Verifica se o buffer está vazio e, caso afirmativo, espera notificação de "dado disponível no buffer"
+		// Verifica se o buffer estï¿½ vazio e, caso afirmativo, espera notificaï¿½ï¿½o de "dado disponï¿½vel no buffer"
 		while (counter == 0)
 		{
-			data_available.wait(lock); // Espera por dado disponível
-			// Lembre-se que a função wait() invoca m.unlock() antes de colocar a thread em estado de espera para que o produtor consiga adquirir a posse do mutex m e produzir dados
-			// Quando a thread é acordada, a função wait() invoca m.lock() retomando a posse do mutex m
+			data_available.wait(lock); // Espera por dado disponï¿½vel
+			// Lembre-se que a funï¿½ï¿½o wait() invoca m.unlock() antes de colocar a thread em estado de espera para que o produtor consiga adquirir a posse do mutex m e produzir dados
+			// Quando a thread ï¿½ acordada, a funï¿½ï¿½o wait() invoca m.lock() retomando a posse do mutex m
 		}
 
-		// O buffer não está mais vazio, então consome um elemento
+		// O buffer nï¿½o estï¿½ mais vazio, entï¿½o consome um elemento
 		int i = get_buffer();
 		std::cout << "Consumer " << id << " - consumed: " << i << " - Buffer counter: " << counter << std::endl;
 
@@ -113,10 +113,10 @@ void consumer_func(const unsigned id)
 		if (SLEEP_TIME > 0)
 			std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 
-		// Verifica a integridade do buffer, ou seja, verifica se o número de elementos do buffer (counter)
-		// é maior ou igual a zero
+		// Verifica a integridade do buffer, ou seja, verifica se o nï¿½mero de elementos do buffer (counter)
+		// ï¿½ maior ou igual a zero
 		assert(counter >= 0);
-	}  // Fim de escopo -> o objeto lock será destruído e invocará m.unlock(), liberando o mutex m
+	}  // Fim de escopo -> o objeto lock serï¿½ destruï¿½do e invocarï¿½ m.unlock(), liberando o mutex m
 }
 
 int main()

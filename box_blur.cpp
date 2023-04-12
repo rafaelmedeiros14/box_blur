@@ -26,6 +26,9 @@ static const int NUM_CHANNELS = 3;
 typedef vector<vector<uint8_t>> single_channel_image_t;
 typedef array<single_channel_image_t, NUM_CHANNELS> image_t;
 
+// Variavel para guardar a quantidade de imagem no diretorio
+int file_count = 0;
+
 // Mutex para proteger os recursos compartilhados
 std::mutex m;
 // Variavel de condicao que indica que existe espaco disponivel no buffer
@@ -211,8 +214,9 @@ void producer_func(const unsigned id)
 // Consumer
 void consumer_func(const unsigned id)
 {
-	while (true)
-	{
+    int i = 0;
+	while (i < file_count)
+    {
 		// Cria um objeto do tipo unique_lock que no construtor chama m.lock()
 		std::unique_lock<std::mutex> lock(m);
 		
@@ -237,7 +241,7 @@ void consumer_func(const unsigned id)
         string output_image_path = input_image_path.replace(input_image_path.find(INPUT_DIRECTORY), INPUT_DIRECTORY.length(), OUTPUT_DIRECTORY);
         write_image(output_image_path, output_image);
 
-        cout << "Consumer " << id;
+        cout << "Consumer " << id << " - Buffer counter: " << counter << endl;
 
 		space_available.notify_one();
 		
@@ -273,7 +277,10 @@ int main(int argc, char *argv[])
         cerr << "Error there is a file named " << OUTPUT_DIRECTORY << ", it should be a directory" << endl;
         return 1;
     }
-
+    
+    for (auto &file : filesystem::directory_iterator{INPUT_DIRECTORY}){
+        file_count++;
+    }
     // Cria NUM_PRODUCER thread produtoras  e NUM_CONSUMER threads consumidoras
 	std::vector<std::thread> producers;
 	std::vector<std::thread> consumers;
